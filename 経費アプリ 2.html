@@ -1,0 +1,1336 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>経費管理アプリ</title>
+<script src="https://accounts.google.com/gsi/client" async></script>
+<style>
+:root {
+  --primary: #4f7df9;
+  --success: #22c55e;
+  --danger: #ef4444;
+  --warning: #f97316;
+  --bg: #f1f5f9;
+  --card: #ffffff;
+  --text: #1e293b;
+  --muted: #64748b;
+  --border: #e2e8f0;
+  --nav-h: 60px;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg:#0f172a; --card:#1e293b; --text:#f1f5f9; --muted:#94a3b8; --border:#334155; }
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:var(--nav-h);}
+.header{background:var(--card);border-bottom:1px solid var(--border);padding:10px 16px;position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;}
+.header h1{font-size:17px;font-weight:700;}
+.hdr-right{display:flex;gap:8px;align-items:center;}
+.year-sel{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:5px 8px;font-size:13px;color:var(--text);outline:none;}
+.gmail-btn{background:#fff;border:1.5px solid #dadce0;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer;color:#3c4043;display:flex;align-items:center;gap:4px;white-space:nowrap;}
+.gmail-btn:hover{background:#f8f9fa;}
+.gmail-btn.connected{border-color:#34a853;color:#34a853;}
+/* Nav */
+.tab-nav{position:fixed;bottom:0;left:0;right:0;height:var(--nav-h);background:var(--card);border-top:1px solid var(--border);display:flex;z-index:100;}
+.tnav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:none;border:none;color:var(--muted);font-size:10px;cursor:pointer;transition:color .2s;}
+.tnav-btn.active{color:var(--primary);}
+.tnav-btn .ic{font-size:20px;}
+.page{display:none;}
+.page.active{display:block;}
+/* Month tabs */
+.m-tabs{background:var(--card);border-bottom:1px solid var(--border);display:flex;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
+.m-tabs::-webkit-scrollbar{display:none;}
+.m-tab{flex-shrink:0;padding:10px 13px;border:none;background:none;font-size:13px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;}
+.m-tab.active{color:var(--primary);border-bottom-color:var(--primary);font-weight:600;}
+/* Filter */
+.fbar{padding:10px 16px;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;}
+.fbar::-webkit-scrollbar{display:none;}
+.fbtn{flex-shrink:0;padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:var(--card);font-size:12px;color:var(--muted);cursor:pointer;}
+.fbtn.active{background:var(--primary);border-color:var(--primary);color:#fff;}
+/* Totals */
+.totals{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:10px 16px;}
+.tot{background:var(--card);border-radius:12px;padding:10px 8px;text-align:center;border:1px solid var(--border);}
+.tot .lbl{font-size:10px;color:var(--muted);margin-bottom:3px;}
+.tot .amt{font-size:13px;font-weight:700;}
+.tot.ok .amt{color:var(--success);}
+.tot.ng .amt{color:var(--danger);}
+.tot.chk .amt{color:var(--warning);}
+/* Expense list */
+.exp-list{padding:0 16px 80px;display:flex;flex-direction:column;gap:8px;}
+.exp-card{background:var(--card);border-radius:12px;padding:13px;border:1px solid var(--border);}
+.exp-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px;}
+.exp-name{font-size:14px;font-weight:600;flex:1;margin-right:8px;line-height:1.3;}
+.exp-amt{font-size:16px;font-weight:700;text-align:right;}
+.exp-ratio{font-size:10px;color:var(--muted);display:block;}
+.exp-meta{display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-top:4px;}
+.badge{font-size:11px;padding:2px 8px;border-radius:10px;font-weight:500;}
+.b-ok{background:#dcfce7;color:#166534;}
+.b-ng{background:#fee2e2;color:#991b1b;}
+.b-chk{background:#ffedd5;color:#9a3412;}
+.b-cat{background:var(--bg);color:var(--muted);border:1px solid var(--border);}
+.exp-sub{font-size:12px;color:var(--muted);margin-top:4px;}
+.exp-actions{display:flex;gap:7px;margin-top:9px;justify-content:flex-end;}
+.btn-sm{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:5px 11px;font-size:12px;cursor:pointer;color:var(--text);}
+.btn-consult{background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8;}
+/* FAB */
+.fab{position:fixed;bottom:72px;right:18px;width:52px;height:52px;border-radius:50%;background:var(--primary);color:#fff;border:none;font-size:26px;cursor:pointer;box-shadow:0 4px 14px rgba(79,125,249,.45);display:flex;align-items:center;justify-content:center;z-index:50;line-height:1;}
+/* Modal */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:flex-end;}
+.overlay.hidden{display:none;}
+.modal{background:var(--card);width:100%;max-height:92vh;border-radius:20px 20px 0 0;overflow-y:auto;padding:20px 16px 32px;}
+.modal-hd{font-size:17px;font-weight:700;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;}
+.modal-x{background:none;border:none;font-size:26px;color:var(--muted);cursor:pointer;line-height:1;}
+.fg{margin-bottom:13px;}
+.flbl{font-size:12px;font-weight:600;color:var(--muted);margin-bottom:5px;display:block;}
+.finput{width:100%;padding:11px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:16px;background:var(--bg);color:var(--text);outline:none;}
+.finput:focus{border-color:var(--primary);}
+.ai-badge{margin-top:8px;padding:8px 12px;border-radius:8px;font-size:13px;display:flex;align-items:center;gap:8px;}
+.ai-ok{background:#dcfce7;color:#166534;}
+.ai-ng{background:#fee2e2;color:#991b1b;}
+.ai-chk{background:#ffedd5;color:#9a3412;}
+.btn-main{width:100%;padding:14px;background:var(--primary);color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:600;cursor:pointer;margin-top:6px;}
+.btn-del{width:100%;padding:12px;background:none;color:var(--danger);border:1.5px solid var(--danger);border-radius:12px;font-size:14px;cursor:pointer;margin-top:8px;}
+/* Chat */
+.chat-box{height:260px;overflow-y:auto;padding:12px;background:var(--bg);border-radius:12px;margin-bottom:12px;display:flex;flex-direction:column;gap:8px;}
+.cmsg{max-width:85%;padding:8px 12px;border-radius:12px;font-size:13px;line-height:1.5;}
+.cmsg.ai{background:var(--card);border:1px solid var(--border);align-self:flex-start;border-bottom-left-radius:4px;}
+.cmsg.me{background:var(--primary);color:#fff;align-self:flex-end;border-bottom-right-radius:4px;}
+.chat-row{display:flex;gap:8px;}
+.chat-in{flex:1;padding:10px 14px;border:1.5px solid var(--border);border-radius:20px;font-size:14px;background:var(--bg);color:var(--text);outline:none;}
+.chat-in:focus{border-color:var(--primary);}
+.chat-send{background:var(--primary);color:#fff;border:none;border-radius:50%;width:40px;height:40px;font-size:18px;cursor:pointer;flex-shrink:0;}
+.slider-sec{margin-top:12px;padding:12px;background:var(--bg);border-radius:10px;}
+.slider-sec label{font-size:13px;font-weight:600;display:flex;justify-content:space-between;margin-bottom:8px;}
+input[type=range]{width:100%;accent-color:var(--primary);}
+/* Income */
+.inc-list{padding:16px;display:flex;flex-direction:column;gap:10px;}
+.inc-card{background:var(--card);border-radius:12px;padding:14px;border:1px solid var(--border);}
+.inc-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.inc-company{font-size:15px;font-weight:700;}
+.inc-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;}
+.inc-item{display:flex;flex-direction:column;gap:2px;}
+.inc-lbl{color:var(--muted);}
+.inc-val{font-weight:700;font-size:14px;}
+/* Tax */
+.tax-wrap{padding:16px;}
+.tax-sec-lbl{font-size:11px;font-weight:700;color:var(--muted);margin:16px 0 6px;letter-spacing:.5px;text-transform:uppercase;}
+.tax-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);font-size:14px;}
+.tax-row.bold{font-weight:700;font-size:16px;}
+.tax-row.red{color:var(--danger);}
+.tax-row.grn{color:var(--success);}
+.tax-tip{background:#eff6ff;border-radius:10px;padding:13px;font-size:13px;color:#1d4ed8;margin-top:14px;line-height:1.6;}
+/* Voice */
+.voice-wrap{padding:32px 16px;display:flex;flex-direction:column;align-items:center;gap:22px;}
+.mic-btn{width:110px;height:110px;border-radius:50%;border:none;background:var(--primary);color:#fff;font-size:44px;cursor:pointer;box-shadow:0 8px 24px rgba(79,125,249,.4);display:flex;align-items:center;justify-content:center;transition:all .15s;user-select:none;-webkit-user-select:none;}
+.mic-btn.rec{background:var(--danger);animation:pulse 1s infinite;}
+@keyframes pulse{0%,100%{box-shadow:0 8px 24px rgba(239,68,68,.4);}50%{box-shadow:0 8px 40px rgba(239,68,68,.7);}}
+.voice-hint{font-size:14px;color:var(--muted);text-align:center;line-height:1.6;}
+.voice-res{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;width:100%;font-size:14px;line-height:1.7;}
+.notice-box{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;width:100%;font-size:13px;color:var(--muted);line-height:1.7;}
+/* Empty */
+.empty{text-align:center;padding:48px 16px;color:var(--muted);}
+.empty .ei{font-size:44px;margin-bottom:10px;}
+.hidden{display:none!important;}
+/* Gmail Setup Modal */
+.setup-step{display:flex;gap:12px;margin-bottom:16px;align-items:flex-start;}
+.setup-num{width:26px;height:26px;border-radius:50%;background:var(--primary);color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;}
+.setup-txt{font-size:13px;line-height:1.6;color:var(--text);}
+.setup-txt a{color:var(--primary);}
+.setup-txt code{background:var(--bg);padding:1px 6px;border-radius:4px;font-size:12px;font-family:monospace;}
+/* Import Preview */
+.imp-item{background:var(--bg);border-radius:10px;padding:12px;margin-bottom:10px;border:1px solid var(--border);}
+.imp-item.checked{border-color:var(--primary);background:#eff6ff;}
+.imp-item-head{display:flex;gap:10px;align-items:flex-start;}
+.imp-check{width:20px;height:20px;flex-shrink:0;margin-top:2px;accent-color:var(--primary);}
+.imp-fields{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;}
+.imp-field input, .imp-field select{width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:7px;font-size:13px;background:var(--card);color:var(--text);}
+.imp-field label{font-size:11px;color:var(--muted);margin-bottom:2px;display:block;}
+.imp-status{display:flex;gap:6px;margin-top:6px;align-items:center;flex-wrap:wrap;}
+/* Loading spinner */
+.spinner{display:inline-block;width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+/* Graph */
+.graph-wrap{padding:16px 16px 80px;}
+.graph-sec{background:var(--card);border-radius:14px;padding:16px;margin-bottom:16px;border:1px solid var(--border);}
+.graph-title{font-size:14px;font-weight:700;margin-bottom:14px;color:var(--text);}
+.graph-canvas-wrap{position:relative;width:100%;}
+canvas.gcv{width:100%!important;display:block;}
+.graph-legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
+.gleg-item{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);}
+.gleg-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
+.graph-sum{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;}
+.gsum-card{background:var(--card);border-radius:12px;padding:10px 8px;text-align:center;border:1px solid var(--border);}
+.gsum-lbl{font-size:10px;color:var(--muted);margin-bottom:3px;}
+.gsum-val{font-size:13px;font-weight:700;}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <h1>💼 経費管理</h1>
+  <div class="hdr-right">
+    <button class="gmail-btn" id="gmailBtn" onclick="gmailSync()">
+      <svg width="14" height="14" viewBox="0 0 24 24"><path fill="#EA4335" d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.910 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/></svg>
+      Gmail同期
+    </button>
+    <select class="year-sel" id="yrSel" onchange="changeYear(this.value)">
+      <option value="2024">2024年</option>
+      <option value="2025">2025年</option>
+      <option value="2026" selected>2026年</option>
+      <option value="2027">2027年</option>
+      <option value="2028">2028年</option>
+    </select>
+  </div>
+</header>
+
+<main>
+  <!-- 経費 -->
+  <div id="pg-expense" class="page active">
+    <div class="m-tabs" id="mTabs"></div>
+    <div class="fbar">
+      <button class="fbtn active" data-f="all" onclick="setFilter('all')">すべて</button>
+      <button class="fbtn" data-f="可" onclick="setFilter('可')">✓ 経費可</button>
+      <button class="fbtn" data-f="要確認" onclick="setFilter('要確認')">△ 要確認</button>
+      <button class="fbtn" data-f="不可" onclick="setFilter('不可')">✗ 不可</button>
+    </div>
+    <div class="totals" id="totals"></div>
+    <div class="exp-list" id="expList"></div>
+    <button class="fab" onclick="openAddExp()">＋</button>
+  </div>
+
+  <!-- 音声 -->
+  <div id="pg-voice" class="page">
+    <div class="voice-wrap">
+      <div style="text-align:center">
+        <h2 style="font-size:18px;margin-bottom:8px;">音声入力</h2>
+        <p class="voice-hint">ボタンを押している間だけ録音されます<br>例：「6月15日、新幹線、移動費、12000円」</p>
+      </div>
+      <button class="mic-btn" id="micBtn"
+        onmousedown="startRec(event)" onmouseup="stopRec()"
+        ontouchstart="startRec(event)" ontouchend="stopRec()">🎙️</button>
+      <div class="voice-hint" id="voiceSt">押している間だけ録音されます</div>
+      <div class="voice-res hidden" id="voiceRes"></div>
+      <div class="notice-box">⚠️ 音声入力はHTTPS環境でのみ動作します。<br>GitHub Pagesなどにアップすると PC・スマホ両方で使用できます。</div>
+    </div>
+  </div>
+
+  <!-- 入金 -->
+  <div id="pg-income" class="page">
+    <div class="inc-list" id="incList"></div>
+    <button class="fab" onclick="openAddInc()">＋</button>
+  </div>
+
+  <!-- 申告 -->
+  <div id="pg-tax" class="page">
+    <div class="tax-wrap" id="taxWrap"></div>
+  </div>
+
+  <!-- グラフ -->
+  <div id="pg-graph" class="page">
+    <div class="graph-wrap" id="graphWrap"></div>
+  </div>
+</main>
+
+<nav class="tab-nav">
+  <button class="tnav-btn active" data-t="expense" onclick="switchTab('expense')"><span class="ic">📋</span><span>経費</span></button>
+  <button class="tnav-btn" data-t="voice" onclick="switchTab('voice')"><span class="ic">🎙️</span><span>音声</span></button>
+  <button class="tnav-btn" data-t="income" onclick="switchTab('income')"><span class="ic">🏦</span><span>入金</span></button>
+  <button class="tnav-btn" data-t="tax" onclick="switchTab('tax')"><span class="ic">📄</span><span>申告</span></button>
+  <button class="tnav-btn" data-t="graph" onclick="switchTab('graph')"><span class="ic">📊</span><span>グラフ</span></button>
+</nav>
+
+<!-- 経費 追加/編集 モーダル -->
+<div class="overlay hidden" id="expModal">
+  <div class="modal">
+    <div class="modal-hd"><span id="expModalTtl">経費を追加</span><button class="modal-x" onclick="closeModal('expModal')">×</button></div>
+    <div class="fg"><label class="flbl">日付</label><input type="date" class="finput" id="fDate"></div>
+    <div class="fg"><label class="flbl">品目名</label><input type="text" class="finput" id="fName" placeholder="例：マイク、カメラ機材…" oninput="updJudge()"></div>
+    <div class="fg">
+      <label class="flbl">区分</label>
+      <select class="finput" id="fCat" onchange="updJudge()">
+        <option>消耗品費</option><option>器具・備品</option><option>宿泊費</option>
+        <option>移動費</option><option>通信費</option><option>接待費</option><option>その他</option>
+      </select>
+    </div>
+    <div class="fg"><label class="flbl">金額（円）</label><input type="number" class="finput" id="fAmt" placeholder="0"></div>
+    <div class="fg">
+      <label class="flbl">使用目的</label>
+      <input type="text" class="finput" id="fPurpose" placeholder="例：業務用、撮影用、クライアント訪問…" oninput="updJudge()">
+      <div id="aiJudge" class="ai-badge hidden"></div>
+    </div>
+    <div class="fg"><label class="flbl">備考</label><input type="text" class="finput" id="fNote" placeholder="メモ（任意）"></div>
+    <button class="btn-main" onclick="saveExp()">保存する</button>
+    <button class="btn-del hidden" id="btnDelExp" onclick="delExp()">削除</button>
+  </div>
+</div>
+
+<!-- AI相談 モーダル -->
+<div class="overlay hidden" id="chatModal">
+  <div class="modal">
+    <div class="modal-hd"><span>🤖 AI相談</span><button class="modal-x" onclick="closeModal('chatModal')">×</button></div>
+    <div id="chatInfo" style="padding:10px 12px;background:var(--bg);border-radius:10px;font-size:13px;margin-bottom:12px;line-height:1.6;"></div>
+    <div class="chat-box" id="chatBox"></div>
+    <div class="slider-sec">
+      <label><span>按分割合</span><span id="ratioVal" style="color:var(--primary);font-weight:700;">100%</span></label>
+      <input type="range" id="ratioSlider" min="0" max="100" value="100" oninput="updRatio(this.value)">
+      <p style="font-size:11px;color:var(--muted);margin-top:4px;">経費算入額: <span id="ratioAmt" style="font-weight:600;"></span></p>
+    </div>
+    <div class="chat-row" style="margin-top:12px;">
+      <input type="text" class="chat-in" id="chatIn" placeholder="業務との関連性を説明してください…"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat();}">
+      <button class="chat-send" onclick="sendChat()">↑</button>
+    </div>
+    <button class="btn-main" style="margin-top:12px;" onclick="applyChat()">この内容で確定</button>
+  </div>
+</div>
+
+<!-- 入金 追加/編集 モーダル -->
+<div class="overlay hidden" id="incModal">
+  <div class="modal">
+    <div class="modal-hd"><span id="incModalTtl">入金を追加</span><button class="modal-x" onclick="closeModal('incModal')">×</button></div>
+    <div class="fg"><label class="flbl">会社・取引先名</label><input type="text" class="finput" id="iComp" placeholder="例：株式会社〇〇"></div>
+    <div class="fg"><label class="flbl">報酬金額（円）</label><input type="number" class="finput" id="iAmt" placeholder="0" oninput="updIncCalc()"></div>
+    <div class="fg">
+      <label class="flbl">源泉徴収</label>
+      <select class="finput" id="iWith" onchange="updIncCalc()">
+        <option value="no">なし（自分で納付）</option>
+        <option value="yes">あり（源泉徴収済み）</option>
+      </select>
+    </div>
+    <div id="incCalc" style="padding:12px;background:var(--bg);border-radius:10px;font-size:13px;line-height:1.9;"></div>
+    <button class="btn-main" onclick="saveInc()">保存する</button>
+    <button class="btn-del hidden" id="btnDelInc" onclick="delInc()">削除</button>
+  </div>
+</div>
+
+<!-- Gmail セットアップ モーダル -->
+<div class="overlay hidden" id="gmailSetupModal">
+  <div class="modal">
+    <div class="modal-hd"><span>📧 Gmail連携の設定</span><button class="modal-x" onclick="closeModal('gmailSetupModal')">×</button></div>
+
+    <p style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.6;">
+      GoogleのOAuth Client IDを取得して入力することで、GmailからAmazon領収書を自動取得できます。取得は無料・約10分で完了します。
+    </p>
+
+    <div class="setup-step">
+      <div class="setup-num">1</div>
+      <div class="setup-txt">
+        <a href="https://console.cloud.google.com/" target="_blank">Google Cloud Console</a> を開き、Googleアカウントでログインします。
+      </div>
+    </div>
+    <div class="setup-step">
+      <div class="setup-num">2</div>
+      <div class="setup-txt">
+        画面上部の「プロジェクト選択」→「新しいプロジェクト」を作成します（名前は何でもOK）。
+      </div>
+    </div>
+    <div class="setup-step">
+      <div class="setup-num">3</div>
+      <div class="setup-txt">
+        左メニュー「APIとサービス」→「ライブラリ」→ <code>Gmail API</code> を検索して「有効にする」をクリック。
+      </div>
+    </div>
+    <div class="setup-step">
+      <div class="setup-num">4</div>
+      <div class="setup-txt">
+        「APIとサービス」→「認証情報」→「認証情報を作成」→「OAuthクライアントID」を選択。<br>
+        アプリの種類：<code>ウェブアプリケーション</code><br>
+        承認済みのJavaScriptオリジン：<code>null</code>（空欄でOK）
+      </div>
+    </div>
+    <div class="setup-step">
+      <div class="setup-num">5</div>
+      <div class="setup-txt">
+        表示された <strong>クライアントID</strong>（〇〇.apps.googleusercontent.com）を下に貼り付けてください。
+      </div>
+    </div>
+    <div class="setup-step">
+      <div class="setup-num">6</div>
+      <div class="setup-txt">
+        「OAuth同意画面」でテストユーザーに自分のGmailアドレスを追加してください。
+      </div>
+    </div>
+
+    <div class="fg" style="margin-top:4px;">
+      <label class="flbl">Google OAuth クライアントID</label>
+      <input type="text" class="finput" id="gClientId" placeholder="xxxxxxxxxxxx.apps.googleusercontent.com"
+        value="">
+    </div>
+    <button class="btn-main" onclick="saveClientId()">保存して連携する</button>
+    <p style="font-size:11px;color:var(--muted);margin-top:10px;text-align:center;">
+      クライアントIDはブラウザのlocalStorageにのみ保存されます
+    </p>
+  </div>
+</div>
+
+<!-- Gmail インポートプレビュー モーダル -->
+<div class="overlay hidden" id="importModal">
+  <div class="modal">
+    <div class="modal-hd">
+      <span>📥 Gmailインポート</span>
+      <button class="modal-x" onclick="closeModal('importModal')">×</button>
+    </div>
+    <div id="importLoading" style="text-align:center;padding:32px;">
+      <div class="spinner" style="width:36px;height:36px;margin:0 auto 12px;"></div>
+      <p id="importLoadingTxt" style="font-size:14px;color:var(--muted);">Gmailからメールを取得中…</p>
+    </div>
+    <div id="importContent" class="hidden">
+      <p id="importSummary" style="font-size:13px;color:var(--muted);margin-bottom:12px;"></p>
+      <div id="importList"></div>
+      <button class="btn-main" id="importConfirmBtn" onclick="importConfirm()" style="margin-top:4px;">
+        選択した項目を追加する
+      </button>
+    </div>
+    <div id="importEmpty" class="hidden" style="text-align:center;padding:24px;color:var(--muted);">
+      <div style="font-size:40px;margin-bottom:10px;">📭</div>
+      <p>取り込み可能なAmazonの注文メールが見つかりませんでした。</p>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== STATE =====
+const S = { year:2026, tab:'expense', month:'all', filter:'all', editExpId:null, editIncId:null, chatExpId:null, chatStatus:null, chatRatio:100 };
+
+// ===== SAMPLE DATA (Gmailから取得したAmazon実購入履歴 2026年) =====
+const SAMPLE_EXP = {
+  '2':[
+    {id:'e1',date:'2026-02-23',name:'FONKCASE iPhone 17 Pro ケース MagSafe対応 CDリング・スタンド一体',category:'消耗品費',amount:2399,purpose:'',status:'要確認',ratio:100,notes:'Amazon注文 #250-0150241-8998270'},
+    {id:'e2',date:'2026-02-23',name:'TORRAS フィルム For iPhone 17 Pro ガラスフィルム 航空宇宙ガラス 2枚セット',category:'消耗品費',amount:3980,purpose:'',status:'要確認',ratio:100,notes:'Amazon注文 #250-0150241-8998270'},
+    {id:'e3',date:'2026-02-27',name:'NIMASO カメラフィルム iPhone 17 Pro 用 保護ガラス 2枚入り',category:'消耗品費',amount:1799,purpose:'',status:'要確認',ratio:100,notes:'Amazon注文'},
+  ],
+  '3':[
+    {id:'e4',date:'2026-03-24',name:'Micfendy 口臭チェッカー USB充電式 携帯型',category:'その他',amount:4607,purpose:'',status:'不可',ratio:100,notes:'Amazon注文'},
+  ],
+  '4':[
+    {id:'e5',date:'2026-04-10',name:'空調作業服 ファンバッテリーセット 長袖 夏用 (櫻の萌)',category:'消耗品費',amount:6999,purpose:'',status:'要確認',ratio:100,notes:'Amazon注文'},
+    {id:'e6',date:'2026-04-10',name:'手袋クリップ カラビナ 落下防止 3個セット (Haojiaho)',category:'消耗品費',amount:590,purpose:'',status:'要確認',ratio:100,notes:'Amazon注文'},
+  ],
+  '5':[
+    {id:'e7',date:'2026-05-19',name:'Ulanzi VL-81 LEDビデオライト 充電式 小型',category:'器具・備品',amount:2718,purpose:'動画撮影用',status:'可',ratio:100,notes:'Amazon注文'},
+    {id:'e8',date:'2026-05-19',name:'スマホ三脚 Bluetoothリモコン付き 最大130cm 軽量',category:'器具・備品',amount:1990,purpose:'動画撮影用',status:'可',ratio:100,notes:'Amazon注文'},
+    {id:'e9',date:'2026-05-19',name:'NEEWER スマホケージ ビデオリグ 撮影補助フレーム',category:'器具・備品',amount:9899,purpose:'動画撮影用',status:'可',ratio:100,notes:'Amazon注文'},
+    {id:'e10',date:'2026-05-19',name:'DJI Mic Mini（2 TX + 1 RX + 充電ケース）ワイヤレスマイク',category:'器具・備品',amount:14520,purpose:'動画収録用',status:'可',ratio:100,notes:'Amazon注文'},
+    {id:'e11',date:'2026-05-26',name:'Amazon Kindle 16GB マッチャ 広告なし 電子書籍リーダー',category:'器具・備品',amount:19980,purpose:'',status:'要確認',ratio:100,notes:'Amazon注文'},
+    {id:'e12',date:'2026-05-26',name:'MoKo Kindle ケース 軽量 オートスリープ対応 グリーン',category:'消耗品費',amount:1998,purpose:'',status:'要確認',ratio:100,notes:'Amazon注文'},
+  ],
+  '6':[
+    {id:'e13',date:'2026-06-09',name:'アディダス スニーカー ライト RACER 4.0 (IE6132) 25.5cm',category:'その他',amount:3938,purpose:'',status:'不可',ratio:100,notes:'Amazon注文'},
+  ],
+};
+const SAMPLE_INC = [
+  {id:'i1',company:'YouTube AdSense',amount:280000,withheld:false},
+  {id:'i2',company:'株式会社A（企業案件）',amount:150000,withheld:true},
+  {id:'i3',company:'株式会社B（PR動画）',amount:80000,withheld:true},
+];
+
+// ===== STORAGE =====
+const DATA_VERSION = '2026-real-v1';
+function eKey(){ return `keiri_exp_${S.year}`; }
+function iKey(){ return `keiri_inc_${S.year}`; }
+function readExp(){
+  // バージョンが変わった場合はリアルデータにリセット
+  if(S.year===2026 && localStorage.getItem('keiri_data_version')!==DATA_VERSION){
+    localStorage.removeItem(eKey());
+    localStorage.setItem('keiri_data_version', DATA_VERSION);
+  }
+  const s=localStorage.getItem(eKey());
+  if(s) return JSON.parse(s);
+  const d={};
+  Object.keys(SAMPLE_EXP).forEach(m=>{ d[m]=[...SAMPLE_EXP[m]]; });
+  return d;
+}
+function writeExp(data){ localStorage.setItem(eKey(),JSON.stringify(data)); }
+function readInc(){
+  const s=localStorage.getItem(iKey());
+  return s?JSON.parse(s):[...SAMPLE_INC];
+}
+function writeInc(data){ localStorage.setItem(iKey(),JSON.stringify(data)); }
+function allExp(){
+  const d=readExp(); const out=[];
+  for(let m=1;m<=12;m++){ const k=String(m); if(d[k]) out.push(...d[k]); }
+  return out;
+}
+function expForMonth(m){ return m==='all'?allExp():(readExp()[String(m)]||[]); }
+function findExp(id){ return allExp().find(e=>e.id===id); }
+
+// ===== AI JUDGE =====
+const BIZ=['業務','ビジネス','撮影','動画','収録','配信','YouTube','ユーチューブ','クライアント','取材','制作','編集','仕事','事業'];
+const UPG=['業務用','撮影用','クライアント訪問','仕事用','事業用','業務利用'];
+const NG_KW=['個人','プライベート','趣味'];
+const IT_BIZ=['カメラ','マイク','レンズ','三脚','照明','ライト','SSD','HDD','メモリ','ハード','PC','パソコン','モニター','機材','Adobe','ソフト','ケーブル','ハブ','配信','収録','グリーンバック','スタンド'];
+const IT_NG=['食品','食料','コーヒー','プロテイン','菓子','お菓子','衣服','スマホケース','ケース','テーブル','家具'];
+function judgeExp(name,cat,purpose){
+  const t=(name+' '+purpose);
+  for(const k of NG_KW) if(t.includes(k)) return {s:'不可',r:`「${k}」が含まれるため経費不可と判定しました`};
+  for(const k of IT_NG) if(name.includes(k)) return {s:'不可',r:`「${k}」は通常、業務経費として認められません`};
+  let sc=0;
+  for(const k of UPG) if(t.includes(k)) sc+=2;
+  for(const k of BIZ) if(t.includes(k)) sc+=1;
+  for(const k of IT_BIZ) if(name.includes(k)) sc+=1;
+  if(sc>=2) return {s:'可',r:'業務関連性が認められます。経費として算入できます。'};
+  if(sc>=1) return {s:'可',r:'業務用途として経費計上が可能です。'};
+  if(['消耗品費','器具・備品'].includes(cat)) return {s:'要確認',r:'使用目的を入力すると精度が上がります'};
+  if(['宿泊費','移動費'].includes(cat)) return {s:'要確認',r:'業務出張であれば経費可です。目的を入力してください'};
+  if(cat==='通信費') return {s:'要確認',r:'業務利用分のみ経費可。按分割合を設定してください'};
+  return {s:'要確認',r:'使用目的を入力すると自動判定されます'};
+}
+function updJudge(){
+  const name=document.getElementById('fName').value;
+  const cat=document.getElementById('fCat').value;
+  const purpose=document.getElementById('fPurpose').value;
+  const el=document.getElementById('aiJudge');
+  if(!name&&!purpose){ el.classList.add('hidden'); return; }
+  const r=judgeExp(name,cat,purpose);
+  el.classList.remove('hidden','ai-ok','ai-ng','ai-chk');
+  const cls={可:'ai-ok',不可:'ai-ng',要確認:'ai-chk'};
+  const ic={可:'✓',不可:'✗',要確認:'△'};
+  el.classList.add(cls[r.s]);
+  el.innerHTML=`<span>${ic[r.s]} ${r.s}</span><span>${r.r}</span>`;
+}
+
+// ===== HELPERS =====
+function fmt(n){ return '¥'+Math.round(n).toLocaleString(); }
+function calcWH(amt){
+  return amt<=1000000 ? Math.round(amt*0.1021) : Math.round(1000000*0.1021+(amt-1000000)*0.2042);
+}
+function calcTax(ti){
+  const tb=[[1950000,.05,0],[3300000,.10,97500],[6950000,.20,427500],[9000000,.23,636000],[18000000,.33,1536000],[40000000,.40,2796000],[Infinity,.45,4796000]];
+  for(const[lim,rate,ded] of tb) if(ti<=lim) return Math.round(ti*rate-ded);
+  return 0;
+}
+
+// ===== RENDER EXPENSES =====
+function renderMTabs(){
+  const lbls=['全月','1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  const keys=['all','1','2','3','4','5','6','7','8','9','10','11','12'];
+  document.getElementById('mTabs').innerHTML=lbls.map((l,i)=>
+    `<button class="m-tab${S.month===keys[i]?' active':''}" onclick="setMonth('${keys[i]}')">${l}</button>`
+  ).join('');
+}
+function renderTotals(exps){
+  let ok=0,ng=0,chk=0;
+  exps.forEach(e=>{
+    const a=Math.round(e.amount*e.ratio/100);
+    if(e.status==='可') ok+=a;
+    else if(e.status==='不可') ng+=e.amount;
+    else chk+=a;
+  });
+  document.getElementById('totals').innerHTML=`
+    <div class="tot ok"><div class="lbl">✓ 経費可</div><div class="amt">${fmt(ok)}</div></div>
+    <div class="tot ng"><div class="lbl">✗ 経費不可</div><div class="amt">${fmt(ng)}</div></div>
+    <div class="tot chk"><div class="lbl">△ 要確認</div><div class="amt">${fmt(chk)}</div></div>`;
+}
+function renderExps(){
+  renderMTabs();
+  const all=expForMonth(S.month);
+  const shown=S.filter==='all'?all:all.filter(e=>e.status===S.filter);
+  shown.sort((a,b)=>b.date.localeCompare(a.date));
+  renderTotals(all);
+  const el=document.getElementById('expList');
+  if(!shown.length){ el.innerHTML='<div class="empty"><div class="ei">📭</div><p>経費データがありません</p></div>'; return; }
+  const sc={可:'b-ok',不可:'b-ng',要確認:'b-chk'};
+  const si={可:'✓',不可:'✗',要確認:'△'};
+  el.innerHTML=shown.map(e=>{
+    const da=Math.round(e.amount*e.ratio/100);
+    const rl=e.ratio<100?`<span class="exp-ratio">${e.ratio}%按分</span>`:'';
+    const cb=(e.status==='不可'||e.status==='要確認')?`<button class="btn-sm btn-consult" onclick="openChat('${e.id}')">🤖 相談</button>`:'';
+    return `<div class="exp-card">
+      <div class="exp-head">
+        <div class="exp-name">${e.name}</div>
+        <div><div class="exp-amt">${fmt(da)}</div>${rl}</div>
+      </div>
+      <div class="exp-meta">
+        <span class="badge ${sc[e.status]}">${si[e.status]} ${e.status}</span>
+        <span class="badge b-cat">${e.category}</span>
+        <span style="font-size:11px;color:var(--muted)">${e.date}</span>
+      </div>
+      ${e.purpose?`<div class="exp-sub">目的：${e.purpose}</div>`:''}
+      ${e.notes?`<div class="exp-sub">備考：${e.notes}</div>`:''}
+      <div class="exp-actions">${cb}<button class="btn-sm" onclick="openEditExp('${e.id}')">編集</button></div>
+    </div>`;
+  }).join('');
+}
+
+// ===== EXPENSE MODAL =====
+function openAddExp(){
+  S.editExpId=null;
+  document.getElementById('expModalTtl').textContent='経費を追加';
+  document.getElementById('fDate').value=new Date().toISOString().split('T')[0];
+  document.getElementById('fName').value='';
+  document.getElementById('fCat').value='消耗品費';
+  document.getElementById('fAmt').value='';
+  document.getElementById('fPurpose').value='';
+  document.getElementById('fNote').value='';
+  document.getElementById('aiJudge').classList.add('hidden');
+  document.getElementById('btnDelExp').classList.add('hidden');
+  document.getElementById('expModal').classList.remove('hidden');
+}
+function openEditExp(id){
+  const e=findExp(id); if(!e) return;
+  S.editExpId=id;
+  document.getElementById('expModalTtl').textContent='経費を編集';
+  document.getElementById('fDate').value=e.date;
+  document.getElementById('fName').value=e.name;
+  document.getElementById('fCat').value=e.category;
+  document.getElementById('fAmt').value=e.amount;
+  document.getElementById('fPurpose').value=e.purpose||'';
+  document.getElementById('fNote').value=e.notes||'';
+  document.getElementById('btnDelExp').classList.remove('hidden');
+  document.getElementById('expModal').classList.remove('hidden');
+  updJudge();
+}
+function saveExp(){
+  const date=document.getElementById('fDate').value;
+  const name=document.getElementById('fName').value.trim();
+  const cat=document.getElementById('fCat').value;
+  const amount=parseInt(document.getElementById('fAmt').value)||0;
+  const purpose=document.getElementById('fPurpose').value.trim();
+  const notes=document.getElementById('fNote').value.trim();
+  if(!name||!amount){ alert('品目名と金額を入力してください'); return; }
+  const j=judgeExp(name,cat,purpose);
+  const month=String(parseInt(date.split('-')[1]));
+  const data=readExp();
+  if(!data[month]) data[month]=[];
+  if(S.editExpId){
+    for(let m=1;m<=12;m++){
+      const k=String(m); if(!data[k]) continue;
+      const idx=data[k].findIndex(e=>e.id===S.editExpId);
+      if(idx!==-1){ data[k].splice(idx,1); break; }
+    }
+  }
+  data[month].push({id:S.editExpId||('e'+Date.now()),date,name,category:cat,amount,purpose,notes,status:j.s,ratio:100});
+  writeExp(data);
+  closeModal('expModal');
+  renderExps();
+}
+function delExp(){
+  if(!S.editExpId||!confirm('この経費を削除しますか？')) return;
+  const data=readExp();
+  for(let m=1;m<=12;m++){
+    const k=String(m); if(!data[k]) continue;
+    const idx=data[k].findIndex(e=>e.id===S.editExpId);
+    if(idx!==-1){ data[k].splice(idx,1); break; }
+  }
+  writeExp(data); closeModal('expModal'); renderExps();
+}
+
+// ===== CHAT =====
+let _chatMsgs=[];
+function openChat(id){
+  const e=findExp(id); if(!e) return;
+  S.chatExpId=id; S.chatStatus=e.status; S.chatRatio=e.ratio||100;
+  document.getElementById('chatInfo').innerHTML=`<strong>${e.name}</strong> — ${fmt(e.amount)}<br><span style="color:var(--muted)">現在の判定: ${e.status} / 区分: ${e.category}</span>`;
+  document.getElementById('ratioSlider').value=S.chatRatio;
+  document.getElementById('ratioVal').textContent=S.chatRatio+'%';
+  document.getElementById('ratioAmt').textContent=fmt(e.amount*S.chatRatio/100);
+  _chatMsgs=[{r:'ai',t:`「${e.name}」は現在「${e.status}」と判定されています。\n業務との関連性を教えていただければ、経費可に変更できる場合があります。どのような目的で使用しましたか？`}];
+  renderChat();
+  document.getElementById('chatModal').classList.remove('hidden');
+}
+function renderChat(){
+  document.getElementById('chatBox').innerHTML=_chatMsgs.map(m=>`<div class="cmsg ${m.r==='ai'?'ai':'me'}">${m.t.replace(/\n/g,'<br>')}</div>`).join('');
+  document.getElementById('chatBox').scrollTop=99999;
+}
+function sendChat(){
+  const inp=document.getElementById('chatIn');
+  const txt=inp.value.trim(); if(!txt) return;
+  inp.value='';
+  _chatMsgs.push({r:'me',t:txt});
+  const hit=BIZ.some(k=>txt.includes(k))||UPG.some(k=>txt.includes(k))||txt.length>8;
+  if(hit){
+    S.chatStatus='可';
+    _chatMsgs.push({r:'ai',t:`ありがとうございます。「${txt}」という用途であれば業務関連性が認められます。\n\n✓ 経費可に変更できます。\n\n按分割合を設定して「確定」ボタンを押してください。`});
+  } else {
+    _chatMsgs.push({r:'ai',t:'もう少し詳しく教えていただけますか？例：「YouTube動画の撮影用」「クライアントへのプレゼン用」など。'});
+  }
+  renderChat();
+}
+function updRatio(v){
+  S.chatRatio=parseInt(v);
+  document.getElementById('ratioVal').textContent=v+'%';
+  const e=findExp(S.chatExpId);
+  if(e) document.getElementById('ratioAmt').textContent=fmt(e.amount*v/100);
+}
+function applyChat(){
+  if(!S.chatExpId) return;
+  const data=readExp();
+  for(let m=1;m<=12;m++){
+    const k=String(m); if(!data[k]) continue;
+    const idx=data[k].findIndex(e=>e.id===S.chatExpId);
+    if(idx!==-1){ data[k][idx].status=S.chatStatus; data[k][idx].ratio=S.chatRatio; break; }
+  }
+  writeExp(data); closeModal('chatModal'); renderExps();
+}
+
+// ===== INCOME =====
+function renderInc(){
+  const list=readInc();
+  const el=document.getElementById('incList');
+  if(!list.length){ el.innerHTML='<div class="empty"><div class="ei">📭</div><p>入金データがありません</p></div>'; return; }
+  let totG=0,totW=0;
+  const cards=list.map(i=>{
+    const wh=i.withheld?calcWH(i.amount):0;
+    const net=i.amount-wh;
+    totG+=i.amount; totW+=wh;
+    return `<div class="inc-card">
+      <div class="inc-hd"><div class="inc-company">${i.company}</div><button class="btn-sm" onclick="openEditInc('${i.id}')">編集</button></div>
+      <div class="inc-grid">
+        <div class="inc-item"><span class="inc-lbl">報酬金額</span><span class="inc-val">${fmt(i.amount)}</span></div>
+        <div class="inc-item"><span class="inc-lbl">源泉徴収${i.withheld?'あり（控除済）':'なし（要納付）'}</span><span class="inc-val" style="color:var(--danger)">${i.withheld?'−'+fmt(wh):fmt(wh)}</span></div>
+        <div class="inc-item" style="grid-column:1/-1"><span class="inc-lbl">手取り</span><span class="inc-val" style="color:var(--success);font-size:17px;">${fmt(net)}</span></div>
+      </div>
+    </div>`;
+  });
+  cards.push(`<div class="inc-card" style="border-color:var(--primary)">
+    <div style="font-weight:700;margin-bottom:8px;color:var(--primary)">合計</div>
+    <div class="inc-grid">
+      <div class="inc-item"><span class="inc-lbl">総収入</span><span class="inc-val">${fmt(totG)}</span></div>
+      <div class="inc-item"><span class="inc-lbl">源泉徴収合計</span><span class="inc-val" style="color:var(--danger)">−${fmt(totW)}</span></div>
+    </div>
+  </div>`);
+  el.innerHTML=cards.join('');
+}
+function openAddInc(){
+  S.editIncId=null;
+  document.getElementById('incModalTtl').textContent='入金を追加';
+  document.getElementById('iComp').value='';
+  document.getElementById('iAmt').value='';
+  document.getElementById('iWith').value='no';
+  document.getElementById('incCalc').innerHTML='';
+  document.getElementById('btnDelInc').classList.add('hidden');
+  document.getElementById('incModal').classList.remove('hidden');
+}
+function openEditInc(id){
+  const list=readInc(); const item=list.find(i=>i.id===id); if(!item) return;
+  S.editIncId=id;
+  document.getElementById('incModalTtl').textContent='入金を編集';
+  document.getElementById('iComp').value=item.company;
+  document.getElementById('iAmt').value=item.amount;
+  document.getElementById('iWith').value=item.withheld?'yes':'no';
+  document.getElementById('btnDelInc').classList.remove('hidden');
+  document.getElementById('incModal').classList.remove('hidden');
+  updIncCalc();
+}
+function updIncCalc(){
+  const amt=parseInt(document.getElementById('iAmt').value)||0;
+  if(!amt){ document.getElementById('incCalc').innerHTML=''; return; }
+  const wh=calcWH(amt); const net=amt-wh;
+  const isYes=document.getElementById('iWith').value==='yes';
+  document.getElementById('incCalc').innerHTML=`報酬: ${fmt(amt)}<br>源泉徴収額: <span style="color:var(--danger)">${isYes?'控除済 ':'要納付 '}${fmt(wh)}</span><br>手取り: <span style="color:var(--success);font-weight:700;">${fmt(net)}</span>`;
+}
+function saveInc(){
+  const comp=document.getElementById('iComp').value.trim();
+  const amt=parseInt(document.getElementById('iAmt').value)||0;
+  const withheld=document.getElementById('iWith').value==='yes';
+  if(!comp||!amt){ alert('会社名と金額を入力してください'); return; }
+  const list=readInc();
+  if(S.editIncId){
+    const idx=list.findIndex(i=>i.id===S.editIncId);
+    if(idx!==-1) list[idx]={...list[idx],company:comp,amount:amt,withheld};
+  } else {
+    list.push({id:'i'+Date.now(),company:comp,amount:amt,withheld});
+  }
+  writeInc(list); closeModal('incModal'); renderInc();
+}
+function delInc(){
+  if(!S.editIncId||!confirm('この入金データを削除しますか？')) return;
+  writeInc(readInc().filter(i=>i.id!==S.editIncId));
+  closeModal('incModal'); renderInc();
+}
+
+// ===== TAX =====
+function renderTax(){
+  const exps=allExp(); const incs=readInc();
+  let totInc=0,totWH=0,expOk=0,expNg=0,expChk=0;
+  incs.forEach(i=>{ totInc+=i.amount; totWH+=i.withheld?calcWH(i.amount):0; });
+  exps.forEach(e=>{
+    const a=Math.round(e.amount*e.ratio/100);
+    if(e.status==='可') expOk+=a;
+    else if(e.status==='不可') expNg+=e.amount;
+    else expChk+=a;
+  });
+  const netInc=totInc-expOk;
+  const basicDed=480000;
+  const taxable=Math.max(0,netInc-basicDed);
+  const tax=calcTax(taxable);
+  const addTax=Math.max(0,tax-totWH);
+  const refund=Math.max(0,totWH-tax);
+  const takeHome=totInc-expOk-tax;
+  const blueTaxable=Math.max(0,netInc-basicDed-650000);
+  const blueTax=calcTax(blueTaxable);
+  const saving=tax-blueTax;
+  document.getElementById('taxWrap').innerHTML=`
+    <div class="tax-sec-lbl">収入・経費</div>
+    <div class="tax-row"><span>総収入</span><span>${fmt(totInc)}</span></div>
+    <div class="tax-row"><span>経費可 合計</span><span style="color:var(--success)">−${fmt(expOk)}</span></div>
+    <div class="tax-row bold"><span>事業所得</span><span>${fmt(netInc)}</span></div>
+    <div class="tax-sec-lbl">控除・課税所得</div>
+    <div class="tax-row"><span>基礎控除</span><span>−${fmt(basicDed)}</span></div>
+    <div class="tax-row bold"><span>課税所得</span><span>${fmt(taxable)}</span></div>
+    <div class="tax-sec-lbl">税額</div>
+    <div class="tax-row"><span>所得税（推計）</span><span>${fmt(tax)}</span></div>
+    <div class="tax-row"><span>源泉徴収済み</span><span style="color:var(--success)">−${fmt(totWH)}</span></div>
+    ${addTax>0
+      ?`<div class="tax-row bold red"><span>追加納付額</span><span>+${fmt(addTax)}</span></div>`
+      :`<div class="tax-row bold grn"><span>還付金（見込み）</span><span>+${fmt(refund)}</span></div>`}
+    <div class="tax-row bold" style="border-top:2px solid var(--border);margin-top:4px;padding-top:12px;">
+      <span>税引後手取り（推計）</span><span style="color:var(--primary)">${fmt(takeHome)}</span>
+    </div>
+    <div class="tax-sec-lbl">参考</div>
+    <div class="tax-row" style="color:var(--muted)"><span>経費不可 合計</span><span>${fmt(expNg)}</span></div>
+    <div class="tax-row" style="color:var(--warning)"><span>要確認 合計</span><span>${fmt(expChk)}</span></div>
+    <div class="tax-tip">💡 <strong>節税ポイント</strong><br>
+      青色申告特別控除（65万円）を適用すると所得税が約 <strong>${fmt(saving)}</strong> 削減できます。<br>
+      また要確認（${fmt(expChk)}）の経費をAI相談で「経費可」にすると、さらに節税できます。
+    </div>`;
+}
+
+// ===== VOICE =====
+let recog=null;
+function startRec(e){ e.preventDefault();
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){ document.getElementById('voiceSt').textContent='⚠️ このブラウザは音声認識に対応していません'; return; }
+  if(!location.protocol.startsWith('https')&&location.hostname!=='localhost'){
+    document.getElementById('voiceSt').textContent='⚠️ HTTPS環境が必要です'; return; }
+  recog=new SR(); recog.lang='ja-JP'; recog.interimResults=true;
+  recog.onresult=ev=>{
+    const tx=Array.from(ev.results).map(r=>r[0].transcript).join('');
+    document.getElementById('voiceRes').classList.remove('hidden');
+    document.getElementById('voiceRes').textContent='認識中：'+tx;
+    if(ev.results[0].isFinal) parseVoice(tx);
+  };
+  recog.onerror=ev=>{ document.getElementById('voiceSt').textContent='エラー：'+ev.error; };
+  recog.start();
+  document.getElementById('micBtn').classList.add('rec');
+  document.getElementById('voiceSt').textContent='🔴 録音中…';
+}
+function stopRec(){ if(recog) recog.stop(); document.getElementById('micBtn').classList.remove('rec'); document.getElementById('voiceSt').textContent='押している間だけ録音されます'; }
+function parseVoice(txt){
+  const mm=txt.match(/(\d+)月/); const dm=txt.match(/(\d+)日/); const am=txt.match(/([\d,，]+)円/);
+  const cmap={'器具':'器具・備品','備品':'器具・備品','宿泊':'宿泊費','移動':'移動費','交通':'移動費','通信':'通信費','接待':'接待費'};
+  let cat='その他';
+  ['消耗品費','器具','備品','宿泊','移動','交通','通信','接待'].forEach(c=>{ if(txt.includes(c)) cat=cmap[c]||c+'費'; });
+  const mon=(mm?mm[1].padStart(2,'0'):(S.month==='all'?'01':String(S.month).padStart(2,'0')));
+  const day=(dm?dm[1].padStart(2,'0'):String(new Date().getDate()).padStart(2,'0'));
+  const amt=am?parseInt(am[1].replace(/[,，]/g,'')):0;
+  const date=`${S.year}-${mon}-${day}`;
+  let name=txt.replace(/\d+月\d+日|\d+月|\d+日|[\d,，]+円|消耗品費|器具・備品|器具|備品|宿泊費|移動費|交通費|通信費|接待費|その他/g,'').replace(/[、。，\s]+/g,' ').trim();
+  document.getElementById('voiceRes').innerHTML=`<strong>解析結果：</strong><br>日付：${date}<br>品目：${name||'（不明）'}<br>区分：${cat}<br>金額：${amt?fmt(amt):'不明'}<br><br><button class="btn-main" style="margin-top:6px;" onclick="openVoiceToForm('${date}','${encodeURIComponent(name)}','${cat}',${amt})">追加フォームへ →</button>`;
+}
+function openVoiceToForm(date,name,cat,amt){
+  S.editExpId=null;
+  document.getElementById('expModalTtl').textContent='経費を追加';
+  document.getElementById('fDate').value=date;
+  document.getElementById('fName').value=decodeURIComponent(name);
+  document.getElementById('fCat').value=cat;
+  document.getElementById('fAmt').value=amt||'';
+  document.getElementById('fPurpose').value='';
+  document.getElementById('fNote').value='';
+  document.getElementById('btnDelExp').classList.add('hidden');
+  document.getElementById('expModal').classList.remove('hidden');
+  switchTab('expense');
+  updJudge();
+}
+
+// ===== GMAIL API =====
+let _gToken=null;
+let _gTokenClient=null;
+
+function getClientId(){ return localStorage.getItem('gClientId')||''; }
+
+function gmailSync(){
+  const cid=getClientId();
+  if(!cid){ openGmailSetup(); return; }
+  if(!window.google){ alert('Googleライブラリの読み込み中です。少し待ってから再試行してください。'); return; }
+  if(!_gTokenClient){
+    _gTokenClient=google.accounts.oauth2.initTokenClient({
+      client_id: cid,
+      scope: 'https://www.googleapis.com/auth/gmail.readonly',
+      callback: (resp)=>{
+        if(resp.error){ alert('Google認証エラー: '+resp.error); return; }
+        _gToken=resp.access_token;
+        document.getElementById('gmailBtn').classList.add('connected');
+        startGmailFetch();
+      }
+    });
+  }
+  document.getElementById('importLoading').classList.remove('hidden');
+  document.getElementById('importContent').classList.add('hidden');
+  document.getElementById('importEmpty').classList.add('hidden');
+  document.getElementById('importModal').classList.remove('hidden');
+  _gTokenClient.requestAccessToken();
+}
+
+function openGmailSetup(){
+  document.getElementById('gClientId').value=getClientId();
+  document.getElementById('gmailSetupModal').classList.remove('hidden');
+}
+function saveClientId(){
+  const cid=document.getElementById('gClientId').value.trim();
+  if(!cid||!cid.includes('.apps.googleusercontent.com')){
+    alert('正しいクライアントIDを入力してください（〇〇.apps.googleusercontent.com の形式）');
+    return;
+  }
+  localStorage.setItem('gClientId',cid);
+  _gTokenClient=null;
+  closeModal('gmailSetupModal');
+  gmailSync();
+}
+
+async function gmailFetch(url){
+  const r=await fetch(url,{headers:{Authorization:'Bearer '+_gToken}});
+  if(!r.ok) throw new Error('Gmail API error: '+r.status);
+  return r.json();
+}
+
+function b64decode(s){
+  try{ return decodeURIComponent(escape(atob(s.replace(/-/g,'+').replace(/_/g,'/')))); }
+  catch(e){ try{ return atob(s.replace(/-/g,'+').replace(/_/g,'/')); } catch(e2){ return ''; } }
+}
+
+function getHeader(payload,name){
+  const h=payload.headers&&payload.headers.find(h=>h.name.toLowerCase()===name.toLowerCase());
+  return h?h.value:'';
+}
+
+function getBody(payload){
+  if(payload.body&&payload.body.data) return b64decode(payload.body.data);
+  if(payload.parts){
+    for(const p of payload.parts){
+      if(p.mimeType==='text/plain'&&p.body&&p.body.data) return b64decode(p.body.data);
+    }
+    for(const p of payload.parts){
+      if(p.mimeType==='text/html'&&p.body&&p.body.data) return b64decode(p.body.data);
+      if(p.parts){
+        for(const pp of p.parts){
+          if(pp.mimeType==='text/plain'&&pp.body&&pp.body.data) return b64decode(pp.body.data);
+        }
+      }
+    }
+  }
+  return '';
+}
+
+function parseAmazonEmail(msg){
+  const subject=getHeader(msg.payload,'Subject');
+  const dateHdr=getHeader(msg.payload,'Date');
+  const from=getHeader(msg.payload,'From');
+
+  // Amazon Japan / global senders
+  const isAmazon=/amazon/i.test(from)||/amazon/i.test(subject);
+  if(!isAmazon) return [];
+
+  // Skip shipping/cancel notifications — we want order confirmations
+  const skipWords=['発送しました','キャンセル','返品','配達完了','お届け','Shipped','Delivered','Refund'];
+  if(skipWords.some(w=>subject.includes(w))) return [];
+
+  const emailDate=new Date(dateHdr);
+  const yyyy=emailDate.getFullYear();
+  const mm=String(emailDate.getMonth()+1).padStart(2,'0');
+  const dd=String(emailDate.getDate()).padStart(2,'0');
+  const date=`${yyyy}-${mm}-${dd}`;
+
+  // Only import for current app year
+  if(yyyy!==S.year) return [];
+
+  const raw=getBody(msg.payload);
+  // Strip HTML
+  const text=raw.replace(/<style[^>]*>[\s\S]*?<\/style>/gi,'')
+               .replace(/<[^>]+>/g,' ')
+               .replace(/&nbsp;/g,' ').replace(/&amp;/g,'&')
+               .replace(/&lt;/g,'<').replace(/&gt;/g,'>')
+               .replace(/&#[0-9]+;/g,' ')
+               .replace(/[ \t]+/g,' ')
+               .replace(/\r\n|\r/g,'\n');
+  const lines=text.split('\n').map(l=>l.trim()).filter(l=>l);
+
+  const items=[];
+  const seen=new Set();
+
+  // Strategy 1: find lines that end with or contain a price, preceded by an item name
+  for(let i=0;i<lines.length;i++){
+    const line=lines[i];
+    const pm=line.match(/[¥￥]([\d,]+)/);
+    if(!pm) continue;
+    const price=parseInt(pm[1].replace(/,/g,''));
+    // Skip totals, shipping, tax lines
+    if(price<100||price>300000) continue;
+    const lLow=line.toLowerCase();
+    if(/合計|小計|送料|税|ポイント|割引|total|shipping|tax|subtotal/i.test(lLow)) continue;
+
+    // Find item name: check the line itself or up to 4 lines before
+    let name='';
+    // Try current line minus the price
+    const namePart=line.replace(/[¥￥][\d,]+/g,'').replace(/\s+/g,' ').trim();
+    if(namePart.length>3&&namePart.length<100&&!/^[\s\d\-\/:]+$/.test(namePart)){
+      name=namePart;
+    } else {
+      // Look at previous lines
+      for(let b=i-1;b>=Math.max(0,i-5);b--){
+        const cand=lines[b].replace(/[¥￥][\d,]+/g,'').trim();
+        if(cand.length>3&&cand.length<120
+          &&!/^[\s\d\-\/:#×\*\.]+$/.test(cand)
+          &&!/合計|小計|送料|税|ポイント|数量|Qty|Total|Shipping|ご注文/i.test(cand)){
+          name=cand; break;
+        }
+      }
+    }
+    if(!name) name='Amazon購入品';
+    // Clean up name
+    name=name.replace(/^\d+\s+/,'').replace(/\s{2,}/g,' ').trim();
+    if(name.length>80) name=name.substring(0,80)+'…';
+
+    const key=date+'_'+name+'_'+price;
+    if(seen.has(key)) continue;
+    seen.add(key);
+    items.push({date,name,amount:price,category:'消耗品費',purpose:'',notes:'Amazon注文'});
+  }
+
+  // Strategy 2: if nothing found but we know it's an order email, extract by order total
+  if(items.length===0){
+    const allPrices=[...text.matchAll(/[¥￥]([\d,]+)/g)]
+      .map(m=>parseInt(m[1].replace(/,/g,'')))
+      .filter(p=>p>=100&&p<=300000);
+    if(allPrices.length>0){
+      const price=Math.max(...allPrices);
+      const key=date+'_'+price;
+      if(!seen.has(key)){
+        seen.add(key);
+        // Try to get a better name from subject
+        let name=subject.replace(/Amazon\.co\.jp|Amazon\.com|ご注文の確認|Order Confirmation|注文番号|#[\d-]+/gi,'').trim()||'Amazon購入品';
+        if(name.length<2) name='Amazon購入品';
+        items.push({date,name,amount:price,category:'消耗品費',purpose:'',notes:'Amazon注文'});
+      }
+    }
+  }
+
+  return items;
+}
+
+let _importCandidates=[];
+
+async function startGmailFetch(){
+  document.getElementById('importLoadingTxt').textContent='Gmailからメールを取得中…';
+  try{
+    // Search for Amazon order confirmation emails in the target year
+    const yearStart=`${S.year}/01/01`;
+    const yearEnd=`${S.year+1}/01/01`;
+    const q=encodeURIComponent(`from:amazon after:${yearStart} before:${yearEnd}`);
+    const listData=await gmailFetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${q}&maxResults=100`);
+
+    if(!listData.messages||listData.messages.length===0){
+      showImportEmpty(); return;
+    }
+
+    const msgs=listData.messages.slice(0,80);
+    let done=0;
+    const candidates=[];
+
+    for(const m of msgs){
+      document.getElementById('importLoadingTxt').textContent=`メールを解析中… (${++done}/${msgs.length})`;
+      try{
+        const detail=await gmailFetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}?format=full`);
+        const parsed=parseAmazonEmail(detail);
+        candidates.push(...parsed);
+      } catch(e){ /* skip failed messages */ }
+    }
+
+    // Deduplicate against existing data
+    const existing=allExp();
+    const fresh=candidates.filter(c=>{
+      return !existing.some(e=>
+        e.date===c.date &&
+        Math.abs(e.amount-c.amount)<10 &&
+        (e.notes||'').includes('Amazon')
+      );
+    });
+
+    if(fresh.length===0){ showImportEmpty(); return; }
+    _importCandidates=fresh;
+    showImportPreview(fresh);
+  } catch(e){
+    document.getElementById('importLoading').classList.add('hidden');
+    alert('取得エラー: '+e.message+'\n\nクライアントIDが正しいか確認してください。');
+    closeModal('importModal');
+  }
+}
+
+function showImportEmpty(){
+  document.getElementById('importLoading').classList.add('hidden');
+  document.getElementById('importEmpty').classList.remove('hidden');
+}
+
+function showImportPreview(items){
+  document.getElementById('importLoading').classList.add('hidden');
+  document.getElementById('importContent').classList.remove('hidden');
+  document.getElementById('importSummary').textContent=`${items.length}件の新規Amazon注文が見つかりました。取り込む項目を選択してください。`;
+
+  const cats=['消耗品費','器具・備品','宿泊費','移動費','通信費','接待費','その他'];
+  const catOpts=cats.map(c=>`<option>${c}</option>`).join('');
+
+  document.getElementById('importList').innerHTML=items.map((item,i)=>{
+    const j=judgeExp(item.name,'消耗品費','');
+    const scl={可:'b-ok',不可:'b-ng',要確認:'b-chk'};
+    const sci={可:'✓',不可:'✗',要確認:'△'};
+    return `<div class="imp-item" id="imp-${i}">
+      <div class="imp-item-head">
+        <input type="checkbox" class="imp-check" checked onchange="toggleImpItem(this,${i})">
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:600;line-height:1.4;">${item.name}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px;">${item.date} · ${fmt(item.amount)}</div>
+        </div>
+      </div>
+      <div class="imp-fields">
+        <div class="imp-field" style="grid-column:1/-1">
+          <label>品目名</label>
+          <input type="text" id="iname-${i}" value="${item.name.replace(/"/g,'&quot;')}">
+        </div>
+        <div class="imp-field">
+          <label>区分</label>
+          <select id="icat-${i}">${catOpts}</select>
+        </div>
+        <div class="imp-field">
+          <label>金額（円）</label>
+          <input type="number" id="iamt-${i}" value="${item.amount}">
+        </div>
+        <div class="imp-field" style="grid-column:1/-1">
+          <label>使用目的（任意）</label>
+          <input type="text" id="ipurp-${i}" placeholder="例：撮影用、編集用…">
+        </div>
+      </div>
+      <div class="imp-status">
+        <span class="badge ${scl[j.s]}">${sci[j.s]} ${j.s}</span>
+        <span style="font-size:11px;color:var(--muted);">AIが自動判定しています</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleImpItem(cb,i){
+  const el=document.getElementById('imp-'+i);
+  if(cb.checked) el.classList.add('checked');
+  else el.classList.remove('checked');
+}
+
+function importConfirm(){
+  const items=_importCandidates;
+  const data=readExp();
+  let count=0;
+
+  items.forEach((item,i)=>{
+    const cb=document.querySelector(`#imp-${i} .imp-check`);
+    if(!cb||!cb.checked) return;
+
+    const name=(document.getElementById(`iname-${i}`)?.value||item.name).trim();
+    const cat=document.getElementById(`icat-${i}`)?.value||item.category;
+    const amount=parseInt(document.getElementById(`iamt-${i}`)?.value)||item.amount;
+    const purpose=(document.getElementById(`ipurp-${i}`)?.value||'').trim();
+    const date=item.date;
+    const month=String(parseInt(date.split('-')[1]));
+    const j=judgeExp(name,cat,purpose);
+
+    if(!data[month]) data[month]=[];
+    data[month].push({id:'g'+Date.now()+i,date,name,category:cat,amount,purpose,notes:'Amazon注文',status:j.s,ratio:100});
+    count++;
+  });
+
+  writeExp(data);
+  closeModal('importModal');
+  renderExps();
+  alert(`${count}件の経費を追加しました。`);
+}
+
+// ===== NAV =====
+function switchTab(t){
+  S.tab=t;
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tnav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('pg-'+t).classList.add('active');
+  document.querySelector(`.tnav-btn[data-t="${t}"]`).classList.add('active');
+  if(t==='expense') renderExps();
+  if(t==='income') renderInc();
+  if(t==='tax') renderTax();
+  if(t==='graph') renderGraph();
+}
+function setMonth(m){ S.month=m; renderExps(); }
+function setFilter(f){
+  S.filter=f;
+  document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('active'));
+  document.querySelector(`.fbtn[data-f="${f}"]`).classList.add('active');
+  renderExps();
+}
+function changeYear(y){ S.year=parseInt(y); switchTab(S.tab); }
+function closeModal(id){ document.getElementById(id).classList.add('hidden'); }
+
+// Show connected state if client ID is already saved
+if(getClientId()) document.getElementById('gmailBtn').classList.add('connected');
+
+// ===== GRAPH =====
+function renderGraph(){
+  const exps = allExp();
+  const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const textColor = isDark ? '#94a3b8' : '#64748b';
+  const gridColor = isDark ? '#334155' : '#e2e8f0';
+
+  // ---- 月別集計 ----
+  const months = ['1','2','3','4','5','6','7','8','9','10','11','12'];
+  const monthLabels = months.map(m=>m+'月');
+  const byMonth = {};
+  months.forEach(m=>{ byMonth[m]={ok:0,chk:0,ng:0}; });
+  exps.forEach(e=>{
+    const m = String(parseInt(e.date.split('-')[1]));
+    const a = Math.round(e.amount * e.ratio / 100);
+    if(e.status==='可') byMonth[m].ok += a;
+    else if(e.status==='不可') byMonth[m].ng += e.amount;
+    else byMonth[m].chk += a;
+  });
+
+  // ---- カテゴリ別集計 ----
+  const cats = {};
+  exps.forEach(e=>{
+    const a = Math.round(e.amount * e.ratio / 100);
+    cats[e.category] = (cats[e.category]||0) + a;
+  });
+  const catEntries = Object.entries(cats).sort((a,b)=>b[1]-a[1]);
+  const catColors = ['#4f7df9','#22c55e','#f97316','#a855f7','#06b6d4','#f43f5e','#84cc16'];
+
+  // ---- サマリー ----
+  let totOk=0,totChk=0,totNg=0;
+  exps.forEach(e=>{
+    const a=Math.round(e.amount*e.ratio/100);
+    if(e.status==='可') totOk+=a;
+    else if(e.status==='不可') totNg+=e.amount;
+    else totChk+=a;
+  });
+
+  document.getElementById('graphWrap').innerHTML = `
+    <div class="graph-sum">
+      <div class="gsum-card"><div class="gsum-lbl">経費可 合計</div><div class="gsum-val" style="color:var(--success)">${fmt(totOk)}</div></div>
+      <div class="gsum-card"><div class="gsum-lbl">要確認 合計</div><div class="gsum-val" style="color:var(--warning)">${fmt(totChk)}</div></div>
+      <div class="gsum-card"><div class="gsum-lbl">経費不可 合計</div><div class="gsum-val" style="color:var(--danger)">${fmt(totNg)}</div></div>
+    </div>
+    <div class="graph-sec">
+      <div class="graph-title">月別経費（円）</div>
+      <div class="graph-canvas-wrap"><canvas class="gcv" id="cvBar" height="200"></canvas></div>
+      <div class="graph-legend">
+        <div class="gleg-item"><div class="gleg-dot" style="background:#22c55e"></div>経費可</div>
+        <div class="gleg-item"><div class="gleg-dot" style="background:#f97316"></div>要確認</div>
+        <div class="gleg-item"><div class="gleg-dot" style="background:#ef4444"></div>経費不可</div>
+      </div>
+    </div>
+    <div class="graph-sec">
+      <div class="graph-title">カテゴリ別内訳</div>
+      <div class="graph-canvas-wrap" style="max-width:260px;margin:0 auto"><canvas class="gcv" id="cvDonut" height="260"></canvas></div>
+      <div class="graph-legend" style="justify-content:center">${catEntries.map((c,i)=>`<div class="gleg-item"><div class="gleg-dot" style="background:${catColors[i%catColors.length]}"></div>${c[0]}: ${fmt(c[1])}</div>`).join('')}</div>
+    </div>`;
+
+  // ---- バーチャート描画 ----
+  requestAnimationFrame(()=>{
+    const cvBar = document.getElementById('cvBar');
+    if(!cvBar) return;
+    const dpr = window.devicePixelRatio||1;
+    const W = cvBar.parentElement.clientWidth;
+    const H = 200;
+    cvBar.width = W * dpr;
+    cvBar.height = H * dpr;
+    cvBar.style.height = H + 'px';
+    const ctx = cvBar.getContext('2d');
+    ctx.scale(dpr, dpr);
+
+    const pad = {top:16, right:8, bottom:28, left:46};
+    const cw = W - pad.left - pad.right;
+    const ch = H - pad.top - pad.bottom;
+    const maxVal = Math.max(1, ...months.map(m=>byMonth[m].ok+byMonth[m].chk+byMonth[m].ng));
+
+    // Y-axis grid
+    ctx.font = `10px -apple-system,sans-serif`;
+    ctx.fillStyle = textColor;
+    ctx.strokeStyle = gridColor;
+    ctx.lineWidth = 1;
+    const ySteps = 4;
+    for(let i=0; i<=ySteps; i++){
+      const v = Math.round(maxVal * i / ySteps);
+      const y = pad.top + ch - (ch * i / ySteps);
+      ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left+cw, y);
+      ctx.setLineDash([2,3]); ctx.stroke(); ctx.setLineDash([]);
+      ctx.textAlign='right'; ctx.textBaseline='middle';
+      ctx.fillText(v>=10000 ? (v/10000).toFixed(0)+'万' : v, pad.left-4, y);
+    }
+
+    // Bars
+    const barW = cw / months.length;
+    const grpW = barW * 0.75;
+    const colors = ['#22c55e','#f97316','#ef4444'];
+    months.forEach((m,i)=>{
+      const vals = [byMonth[m].ok, byMonth[m].chk, byMonth[m].ng];
+      const x0 = pad.left + i*barW + (barW-grpW)/2;
+      const segW = grpW / 3;
+      vals.forEach((v,si)=>{
+        if(v===0) return;
+        const bh = Math.max(1, ch * v / maxVal);
+        const bx = x0 + si*segW;
+        const by = pad.top + ch - bh;
+        ctx.fillStyle = colors[si];
+        ctx.beginPath();
+        ctx.roundRect(bx+1, by, segW-2, bh, [3,3,0,0]);
+        ctx.fill();
+      });
+      // X label
+      ctx.fillStyle = textColor;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText(monthLabels[i], pad.left + i*barW + barW/2, pad.top+ch+4);
+    });
+
+    // ---- ドーナツチャート描画 ----
+    const cvD = document.getElementById('cvDonut');
+    if(!cvD || catEntries.length===0) return;
+    const DW = cvD.parentElement.clientWidth;
+    const DH = 260;
+    cvD.width = DW * dpr;
+    cvD.height = DH * dpr;
+    cvD.style.height = DH + 'px';
+    const dc = cvD.getContext('2d');
+    dc.scale(dpr, dpr);
+
+    const cx = DW/2, cy = DH/2 - 10;
+    const outerR = Math.min(DW,DH) * 0.38;
+    const innerR = outerR * 0.55;
+    const total = catEntries.reduce((s,c)=>s+c[1],0);
+    let angle = -Math.PI/2;
+
+    catEntries.forEach((c,i)=>{
+      const slice = (c[1]/total) * 2*Math.PI;
+      dc.beginPath();
+      dc.moveTo(cx, cy);
+      dc.arc(cx, cy, outerR, angle, angle+slice);
+      dc.closePath();
+      dc.fillStyle = catColors[i % catColors.length];
+      dc.fill();
+      angle += slice;
+    });
+
+    // Inner hole
+    dc.beginPath();
+    dc.arc(cx, cy, innerR, 0, 2*Math.PI);
+    dc.fillStyle = isDark ? '#1e293b' : '#ffffff';
+    dc.fill();
+
+    // Center text
+    dc.fillStyle = textColor;
+    dc.font = `bold 13px -apple-system,sans-serif`;
+    dc.textAlign = 'center';
+    dc.textBaseline = 'middle';
+    dc.fillText('合計', cx, cy-9);
+    dc.font = `bold 12px -apple-system,sans-serif`;
+    dc.fillStyle = isDark ? '#f1f5f9' : '#1e293b';
+    dc.fillText(fmt(total), cx, cy+9);
+  });
+}
+
+// ===== INIT =====
+renderExps();
+</script>
+</body>
+</html>
